@@ -7,25 +7,24 @@ var cors=require('cors');
 var bodyparser=require('body-parser');
 //set storage engine
 //init App
+var fs=require('fs');
 var app=express();
 
 app.use(cors());
 app.use(express.static('./public'));
 
 var con=mysql.createConnection({
-   host: "localhost",
+    host: "localhost",
     user: "root",
     password: "",
     database: "dbtest"
 });
-
 
 con.connect(function (err) {
 
     app.use(bodyparser.urlencoded({
         extended: true
     }));
-
 
     const storage=multer.diskStorage({
         destination: './public/images/',
@@ -36,21 +35,56 @@ con.connect(function (err) {
 
 //init upload
     const upload =multer({
-        storage: storage
+        storage: storage,
+        limits:{fileSize: 100000},
+        fileFilter: function(req,file,cb){
+            checkfiletype(file,cb);
+        }
     }).single('myimage');
 
-app.post('/insert', upload,(req,res)=>{
+    //check file type
+    function checkfiletype(file,cb) {
+        //allow ext
+        const filetype=/jpeg|jpg|png|gif/;
+        //check Ext
+        const extname=filetype.test(path.extname(file.originalname).toLowerCase());
 
-    console.log(req.body);
-    console.log(JSON.stringify(req.file), 'upload complete');
+        //check mimetype
+        const mimetype=filetype.test(file.mimetype);
 
-    var sql="insert into tblprofile(firstname,profile) values('"+ req.body.fname +"','"+ req.file.filename +"')";
-    con.query(sql,function (err,result) {
-        if(err) {
-            throw err;
+        if(mimetype &&extname){
+            return cb(null,true);
+        }else{
+            cb("images only");
         }
-        res.send(result);
+    }
+
+var error;
+app.post('/insert',(req,res)=>{
+    upload(req, res, function (err) {
+            if (err) {
+            console.log("cs " + err);
+            res.status(500).send(err);
+            return
+        }
+
+        console.log(req.body);
+        console.log(JSON.stringify(req.file), 'upload complete');
+
+        var sql="insert into tblprofile(firstname,profile) values('"+ req.body.fname +"','"+ req.file.filename +"')";
+        con.query(sql,function (err,result) {
+            if(err) {
+                throw err;
+            }
+            res.send(result);
+        });
+        // Everything went fine
     });
+
+    // }else{
+    //     console.log("error in filesize");
+    //     res.send("error in filesize");
+    // }
 });
 
 app.put('/update',upload, (req,res)=>{
@@ -64,16 +98,41 @@ app.put('/update',upload, (req,res)=>{
     });
 });
 
+app.delete('/deleteimage',(req,res)=>{
+
+    var image=req.query.name;
+    fs.unlink('./public/images/'+image,function (err,res) {
+        if(err){
+            console.log("Error is there");
+        }else{
+            console.log("deleted");
+            //res.send(res);
+        }
+    });
+    res.send("deleted");
+});
+
+app.get('/search',(req,res)=>{
+   var sname=req.query.name;
+
+   var sql="select * from tblprofile where firstname like '%"+ sname +"%' and flag='true'";
+
+    con.query(sql, (err,result)=> {
+        if(err){
+            throw err;
+        }
+        //console.log(result);
+        res.send(result);
+    });
+});
+
 app.get('/display',(req,res)=>{
-
-    //var imgpath="E:/Mayur/Node-Js-Programmes/File_uploading_Demo/public/images/";
-
     var sql="select * from tblprofile where flag='true'";
     con.query(sql,function (err,result) {
         if(err){
             throw err;
         }
-        console.log(result);
+        //console.log(result);
         res.send(result);
     });
 });
@@ -86,7 +145,7 @@ app.post('/delete',(req,res)=>{
         if(err){
             throw err;
         }
-        console.log(result);
+        //console.log(result);
         res.send(result);
     });
 });
