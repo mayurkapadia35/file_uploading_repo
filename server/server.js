@@ -52,7 +52,7 @@ con.connect(function (err) {
         //check mimetype
         const mimetype=filetype.test(file.mimetype);
 
-        if(mimetype &&extname){
+        if(mimetype && extname){
             return cb(null,true);
         }else{
             cb("images only");
@@ -61,6 +61,7 @@ con.connect(function (err) {
 
 var error;
 app.post('/insert',(req,res)=>{
+
     upload(req, res, function (err) {
             if (err) {
             console.log("cs " + err);
@@ -163,7 +164,28 @@ app.get('/fetch',(req,res)=>{
     });
 });
 
+app.get('/login',(req,res)=>{
+    var user=req.query.user;
+    var pass=req.query.pass;
+
+    console.log(user);
+    console.log(pass);
+
+    var sql="select * from tblStudent where username='"+ user +"' and password='"+ pass +"'";
+
+    con.query(sql,function (err, result) {
+        if(err){
+            return res.send("Wrong Input is there");
+        }
+        console.log(result);
+        res.send(result);
+    });
+});
+
+
+
 }); //end Connection
+
 
 app.listen(3002,()=>{
     console.log("Connected to the Server 3002 ");
